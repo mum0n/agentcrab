@@ -1,0 +1,53 @@
+[fishery]
+fishing_probability_daily = 0.005
+legal_size_mm = 95.0
+sublegal_retention = false
+
+[environment]
+temp_offset = 1.0
+temp_base = 0.0
+benthic_carrying_capacity = 10000.0
+grid_size = [100, 100]
+
+[species]
+name = "snowcrab"
+max_size_male = 180.0
+max_size_female = 120.0
+cw50_maturity = 95.0
+maturity_slope = 0.1
+growth_beta0 = 0.0
+growth_beta1 = 1.0
+growth_maturity_reduction = 0.0
+growth_temp_coeff = 0.0
+growth_ref_temp = 10.0
+growth_noise_sd = 0.05
+asymptotic_size = 200.0
+stage_lower_bound_kappa = 0.5
+stage_lower_bound_s0 = 2.0
+stage_lower_bound_iota0 = 0.0
+
+[toggles]
+bioenergetics = true
+thermal_stress = true
+cannibalism = true
+adult_senescence = true
+spermathecal_storage = true
+directed_habitat_taxis = true
+degree_day_ecdysial_gating = true
+molting = true
+reproduction = true
+
+[phenology]
+min_intermolt_days = 30
+required_degree_days = 500.0
+molting_probability_base = 0.1
+
+[mortality]
+base_mortality = 0.001
+predation_coeff = 0.01
+soft_shell_mortality = 0.05
+starvation_threshold = 0.1
+thermal_stress_coeff = 0.01
+senescence_age = 5.0
+cannibalism_coeff = 0.001
+density_feedback_gamma = 1.0

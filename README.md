@@ -1,0 +1,19 @@
+# AgentCrab
+
+Python (Mesa) port of TethysBio — an individual-based simulation engine for biological populations.
+
+## Quick Start
+
+```bash
+cd agentcrab
+pip install -e .
+python -m agentcrab.cli --config configs/default.toml --days 365
+```
+
+## Structure
+
+See `agentcrab_plan.md` for the full porting plan.
+
+## Status
+
+Phase 1 (Core Biology) and Phase 2 (ABM Engine) implemented. Remaining phases in progress.
