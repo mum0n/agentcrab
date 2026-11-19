@@ -116,25 +116,25 @@ def aoi_bottom_temperature_at(lon: float, lat: float, depth: float) -> float:
 
 
 def aoi_habitat_suitability(temp: float, depth: float, mult: float = 1.0, offset: float = 0.0) -> float:
-    """Evaluate Habitat Suitability Index (HSI).
+    """Evaluate Habitat Suitability Index (HSI) matching TethysBio::calculate_habitat_suitability."""
+    from .dynamics import calculate_habitat_suitability
 
-    Optimum thermal window: 0-4 C
-    Optimum depth window: 60-280 m
-    """
-    t_opt = math.exp(-0.5 * ((float(temp) - 2.0) / 2.2) ** 2)
-    z_opt = math.exp(-0.5 * ((float(depth) - 150.0) / 75.0) ** 2)
-    raw_hsi = t_opt * z_opt
+    raw_hsi = calculate_habitat_suitability(float(temp), float(depth))
     realized = raw_hsi * float(mult) + float(offset)
     return max(0.0, min(1.0, realized))
 
 
-def aoi_domain_bounds(lon: float, lat: float, span_meters: float = 1000.0):
+def aoi_domain_bounds(lon: float, lat: float, span_meters=1000.0):
     """Compute geographic bounding boxes centered at (lon, lat)."""
-    half_m = float(span_meters) / 2.0
+    if isinstance(span_meters, (tuple, list)):
+        half_x = float(span_meters[0]) / 2.0
+        half_y = float(span_meters[1]) / 2.0
+    else:
+        half_x = half_y = float(span_meters) / 2.0
     lat_deg_len = 111139.0
     lon_deg_len = max(1000.0, 111139.0 * math.cos(math.radians(float(lat))))
-    dlat = half_m / lat_deg_len
-    dlon = half_m / lon_deg_len
+    dlat = half_y / lat_deg_len
+    dlon = half_x / lon_deg_len
     return {
         "lon": [float(lon) - dlon, float(lon) + dlon],
         "lat": [float(lat) - dlat, float(lat) + dlat],

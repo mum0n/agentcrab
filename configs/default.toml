@@ -7,6 +7,8 @@ sublegal_retention = false
 temp_offset = 1.0
 temp_base = 0.0
 benthic_carrying_capacity = 10000.0
+benthic_carrying_capacity_density = 6000.0
+food_availability = 1.0
 grid_size = [100, 100]
 
 [species]

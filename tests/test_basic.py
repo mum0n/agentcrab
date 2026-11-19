@@ -22,8 +22,8 @@ def test_organism_creation():
 
 def test_params_default():
     params = IBMParameters()
-    assert params.fishery.fishing_probability_daily == 0.005
-    assert params.environment.benthic_carrying_capacity == 10000.0
+    assert params.fishery.fishing_probability_daily == 0.0
+    assert params.environment.benthic_carrying_capacity == 6000.0
     assert params.leslie.survival_stage1 == 0.74
     assert params.criteria.min_population == 1
     assert params.output.save is True
@@ -115,3 +115,24 @@ def test_surplus_production():
     P = schaefer_surplus_production(B, 0.5, 100.0)
     assert len(P) == 3
     assert all(P >= 0)
+
+
+def test_mpa_protection_and_size_shift():
+    # Test model initialization with size shift and stage multipliers
+    model = CrabModel(
+        n_agents=30,
+        grid_size=(20, 20),
+        seed=123,
+        cw_shift=8.0,
+        stage_multipliers={"juvenile": 2.0, "male_adult": 0.5, "female_adult": 0.5},
+        mpa={"xmin": 0, "xmax": 20, "ymin": 0, "ymax": 20, "active": True}
+    )
+    assert len(model.agents) == 30
+    assert model.cw_shift == 8.0
+    assert model.mpa["active"] is True
+    # When all grid cells are enclosed in an active MPA, catch must be zero
+    for _ in range(15):
+        model.step()
+    assert model.catch_total == 0
+    assert model.catch_legal == 0
+

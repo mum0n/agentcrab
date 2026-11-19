@@ -94,10 +94,10 @@ def aoi_bottom_temperature(depth: float, lat: float, lon: float = -64.0) -> floa
 
 
 def aoi_habitat_suitability(temp: float, depth: float, mult: float = 1.0, offset: float = 0.0) -> float:
-    """Evaluate Habitat Suitability Index (HSI)."""
-    t_opt = math.exp(-0.5 * ((float(temp) - 2.0) / 2.2) ** 2)
-    z_opt = math.exp(-0.5 * ((float(depth) - 150.0) / 75.0) ** 2)
-    raw_hsi = t_opt * z_opt
+    """Evaluate Habitat Suitability Index (HSI) matching TethysBio::calculate_habitat_suitability."""
+    from .dynamics import calculate_habitat_suitability
+
+    raw_hsi = calculate_habitat_suitability(float(temp), float(depth))
     realized = raw_hsi * float(mult) + float(offset)
     return max(0.0, min(1.0, realized))
 
@@ -122,5 +122,63 @@ def environmental_input_status() -> dict:
         "environmental_data_dir": str(root),
         "woa23_temperature": (root / WOA23_TEMP_PATH).exists(),
         "nwa_bathymetry": (root / NWA_BATHY_PATH).exists(),
+        "bathymetry_zarr": (root / "bathymetry.zarr").exists(),
+        "hydrography_dir": (root / "hydrography").exists(),
     }
     return status
+
+
+def TethysBio_store_root() -> Path:
+    """Return the package-local environmental data store root."""
+    return _ENVIRONMENT_ROOT
+
+
+def environmental_store_dir(params=None) -> Path:
+    """Resolve the environmental store directory from params or package default."""
+    if params is not None and hasattr(params, "environment") and getattr(params.environment, "geodata_store_dir", ""):
+        p = Path(params.environment.geodata_store_dir)
+        if p.is_absolute():
+            return p
+        return Path(__file__).resolve().parents[2] / p
+    return _ENVIRONMENT_ROOT
+
+
+def scotian_shelf_regional_elevation(lon: float, lat: float) -> float:
+    """Analytic Scotian Shelf regional depth (m, positive) matching TethysBio fallback."""
+    # Positive depth in meters on shelf (~60-240 m) deepening toward shelf edge (lat < 43.5)
+    shelf_depth = (
+        115.0
+        + 45.0 * math.sin(0.9 * (float(lon) + 62.5)) * math.cos(1.1 * (float(lat) - 44.5))
+        + 18.0 * max(0.0, 44.0 - float(lat))
+    )
+    return max(20.0, shelf_depth)
+
+
+def assimilate_environmental_inputs(params=None, output_dir: Optional[str] = None) -> dict:
+    """Assimilate environmental inputs into the local store and write manifest.toml."""
+    store_dir = Path(output_dir) if output_dir else environmental_store_dir(params)
+    store_dir.mkdir(parents=True, exist_ok=True)
+    status = environmental_input_status()
+    manifest_path = store_dir / "manifest.toml"
+    lines = [
+        'format = "agentcrab-environmental-manifest"',
+        f'store_dir = "{store_dir.as_posix()}"',
+        f'woa23_available = {str(status["woa23_temperature"]).lower()}',
+        f'bathymetry_available = {str(status["nwa_bathymetry"] or status["bathymetry_zarr"]).lower()}',
+    ]
+    manifest_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    return {"manifest": str(manifest_path), "status": status}
+
+
+def read_assimilated_environment(
+    lon: float,
+    lat: float,
+    params=None,
+) -> dict:
+    """Read depth and bottom temperature for (lon, lat), falling back to analytic formulas."""
+    depth = read_bathymetry(lat, lon)
+    if depth is None:
+        depth = scotian_shelf_regional_elevation(lon, lat)
+    temp = aoi_bottom_temperature(depth, lat, lon)
+    hsi = aoi_habitat_suitability(temp, depth)
+    return {"depth": float(depth), "temperature": float(temp), "hsi": float(hsi)}

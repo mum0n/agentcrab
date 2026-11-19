@@ -121,3 +121,149 @@ def plot_simulation_dashboard(model, model_df, agent_df, save_path: str = None):
     if save_path:
         fig.savefig(save_path, dpi=150, bbox_inches="tight")
     return fig
+
+
+def fmt_param(val, digits: int = 2) -> str:
+    return f"{float(val):.{digits}f}" if isinstance(val, (int, float)) else str(val)
+
+
+def organism_color(org) -> str:
+    if org.sex.value == "female":
+        return "#ef4444" if org.is_mature else "#f97316"
+    if org.is_mature:
+        return "#2563eb"
+    return "#38bdf8"
+
+
+def organism_size(org) -> float:
+    return max(3.0, min(14.0, org.carapace_width / 12.0))
+
+
+def organism_marker(org) -> str:
+    return "o" if org.sex.value == "female" else "^"
+
+
+def plot_stage_allometry(agent_df, save_path: Optional[str] = None):
+    fig, ax = plt.subplots(figsize=(8, 5))
+    if len(agent_df) > 0 and "carapace_width" in agent_df.columns and "mass" in agent_df.columns:
+        ax.scatter(agent_df["carapace_width"], agent_df["mass"], s=8, alpha=0.4)
+    ax.set_title("Stage & Size Allometry")
+    ax.set_xlabel("Carapace Width (mm)")
+    ax.set_ylabel("Wet Mass (g)")
+    ax.grid(True, alpha=0.3)
+    if save_path:
+        fig.savefig(save_path, dpi=150, bbox_inches="tight")
+    return fig
+
+
+def plot_reproduction_dynamics(model_df, save_path: Optional[str] = None):
+    fig, ax = plt.subplots(figsize=(8, 5))
+    if "n_mature_females" in model_df.columns:
+        ax.plot(model_df.index, model_df["n_mature_females"], label="Mature Females", color="#ef4444")
+    if "n_ovigerous" in model_df.columns:
+        ax.plot(model_df.index, model_df["n_ovigerous"], label="Ovigerous", color="#f59e0b")
+    ax.set_title("Reproduction Dynamics")
+    ax.set_xlabel("Step")
+    ax.set_ylabel("Count")
+    ax.legend()
+    ax.grid(True, alpha=0.3)
+    if save_path:
+        fig.savefig(save_path, dpi=150, bbox_inches="tight")
+    return fig
+
+
+def plot_maturity_ogives(agent_df, params, save_path: Optional[str] = None):
+    from .species import maturity_probability
+    from .types import Sex
+
+    fig, ax = plt.subplots(figsize=(8, 5))
+    cws = np.linspace(10.0, 150.0, 140)
+    ax.plot(cws, [maturity_probability(x, Sex.MALE, params) for x in cws], label="Male (Theory)", color="#2563eb")
+    ax.plot(cws, [maturity_probability(x, Sex.FEMALE, params) for x in cws], label="Female (Theory)", color="#ef4444")
+    ax.set_title("Maturity Ogives")
+    ax.set_xlabel("Carapace Width (mm)")
+    ax.set_ylabel("Proportion Mature")
+    ax.legend()
+    ax.grid(True, alpha=0.3)
+    if save_path:
+        fig.savefig(save_path, dpi=150, bbox_inches="tight")
+    return fig
+
+
+def plot_stock_recruitment(spawners, recruits, sr_fit: Optional[dict] = None, save_path: Optional[str] = None):
+    fig, ax = plt.subplots(figsize=(8, 5))
+    if len(spawners) > 0:
+        ax.scatter(spawners, recruits, color="#0f172a", label="Observed")
+    ax.set_title("Stock-Recruitment")
+    ax.set_xlabel("Spawning Stock")
+    ax.set_ylabel("Recruits")
+    ax.legend()
+    ax.grid(True, alpha=0.3)
+    if save_path:
+        fig.savefig(save_path, dpi=150, bbox_inches="tight")
+    return fig
+
+
+def plot_population_dynamics_fits(observed, comp: dict, save_path: Optional[str] = None):
+    fig, ax = plt.subplots(figsize=(9, 5))
+    ax.plot(observed, "o", color="#0f172a", label="Observed")
+    for k, col in [("schaefer", "#0d9488"), ("delay_difference", "#8b5cf6")]:
+        if k in comp and comp[k] and "predicted" in comp[k]:
+            ax.plot(comp[k]["predicted"], color=col, label=f"{k} (R2={comp[k].get('r2', 0):.2f})")
+    ax.set_title("Macro-Ecological Model Fits")
+    ax.set_xlabel("Year")
+    ax.set_ylabel("Abundance / Biomass")
+    ax.legend()
+    ax.grid(True, alpha=0.3)
+    if save_path:
+        fig.savefig(save_path, dpi=150, bbox_inches="tight")
+    return fig
+
+
+def plot_macro_model_comparison(observed, comp: dict, save_path: Optional[str] = None):
+    return plot_population_dynamics_fits(observed, comp, save_path=save_path)
+
+
+def plot_retrospective_analysis(retro: dict, save_path: Optional[str] = None):
+    fig, ax = plt.subplots(figsize=(7, 4))
+    pts = retro.get("peel_endpoints", [])
+    if pts:
+        ax.plot(range(1, len(pts) + 1), pts, "-o", color="#dc2626")
+    ax.set_title(f"Retrospective Analysis (Mohn's rho={retro.get('mohn_rho', 0.0):.3f})")
+    ax.set_xlabel("Peel")
+    ax.set_ylabel("Terminal Estimate")
+    ax.grid(True, alpha=0.3)
+    if save_path:
+        fig.savefig(save_path, dpi=150, bbox_inches="tight")
+    return fig
+
+
+def plot_stage_specific_dynamics(agent_df, save_path: Optional[str] = None):
+    return plot_stage_distribution(agent_df, save_path=save_path)
+
+
+def plot_abm_summary(model, model_df, agent_df, save_path: Optional[str] = None):
+    return plot_simulation_dashboard(model, model_df, agent_df, save_path=save_path)
+
+
+def plot_functional_relationships(params, save_path: Optional[str] = None):
+    return plot_maturity_ogives(None, params, save_path=save_path)
+
+
+def export_all_plots(model, model_df, agent_df, output_dir: str = "results") -> dict:
+    from pathlib import Path
+
+    out = Path(output_dir)
+    out.mkdir(parents=True, exist_ok=True)
+    paths = {
+        "dashboard": str(out / "dashboard.png"),
+        "timeseries": str(out / "population_timeseries.png"),
+        "allometry": str(out / "stage_allometry.png"),
+        "ogives": str(out / "maturity_ogives.png"),
+    }
+    plot_simulation_dashboard(model, model_df, agent_df, save_path=paths["dashboard"])
+    plot_population_timeseries(model_df, save_path=paths["timeseries"])
+    plot_stage_allometry(agent_df, save_path=paths["allometry"])
+    plot_maturity_ogives(agent_df, model.params, save_path=paths["ogives"])
+    plt.close("all")
+    return paths
